@@ -50,3 +50,5 @@ def get_crypto_data():
 
 if __name__ == '__main__':
     get_crypto_data()
+
+output_filename = f'{exchange_name}_{symbol.replace("/", "_")}_{timeframe}.csv'
