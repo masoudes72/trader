@@ -1,8 +1,13 @@
 import pandas as pd
+import os
 
-# بارگذاری داده‌های اندیکاتور
-df = pd.read_csv("btc_15m_with_indicators.csv")
-
+# تشخیص خودکار فایل کندل دیتا
+for file in os.listdir():
+    if file.endswith("_BTC_USDT_15m.csv"):
+        df = pd.read_csv(file)
+        break
+else:
+    raise FileNotFoundError("فایل کندل ورودی یافت نشد.")
 # بررسی اینکه ستون‌های مورد نیاز وجود دارند یا محاسبه شوند
 if 'atr' not in df.columns:
     df['H-L'] = df['high'] - df['low']
