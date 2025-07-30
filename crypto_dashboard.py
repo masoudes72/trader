@@ -10,16 +10,31 @@ st.title("📈 داشبورد تحلیلی رمزارز - نسخه دیباگ")
 st.markdown("### 🔧 بررسی مرحله‌ای با گزارش دقیق")
 
 # اجرای فایل پایتون با importlib
+import subprocess
+
 def run_script(script_name, label):
     try:
         st.info(f"⏳ اجرای {label}...")
-        file_path = f"./{script_name}"
-        spec = importlib.util.spec_from_file_location("module.name", file_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        st.success(f"✅ {label} با موفقیت اجرا شد.")
+        result = subprocess.run(["python", script_name], capture_output=True, text=True)
+        
+        # وضعیت اجرا
+        if result.returncode == 0:
+            st.success(f"✅ {label} با موفقیت اجرا شد.")
+        else:
+            st.error(f"❌ خطا در اجرای {label} (exit code {result.returncode})")
+        
+        # خروجی استاندارد (stdout)
+        if result.stdout:
+            st.markdown("**📤 خروجی برنامه:**")
+            st.code(result.stdout, language="bash")
+
+        # خطاهای استاندارد (stderr)
+        if result.stderr:
+            st.markdown("**❗ خطا:**")
+            st.code(result.stderr, language="bash")
+
     except Exception as e:
-        st.error(f"❌ خطا در اجرای {label}")
+        st.error(f"❌ اجرای فایل {script_name} با خطای کلی مواجه شد.")
         st.exception(e)
 
 # دکمه‌ها برای اجرای مراحل
