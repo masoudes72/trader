@@ -3,7 +3,7 @@ import pandas as pd
 # بارگذاری داده‌های اندیکاتور
 df = pd.read_csv("btc_15m_with_indicators.csv")
 
-# محاسبه ATR و Momentum اگر در فایل نیست
+# بررسی اینکه ستون‌های مورد نیاز وجود دارند یا محاسبه شوند
 if 'atr' not in df.columns:
     df['H-L'] = df['high'] - df['low']
     df['H-PC'] = abs(df['high'] - df['close'].shift(1))
@@ -14,45 +14,47 @@ if 'atr' not in df.columns:
 if 'momentum' not in df.columns:
     df['momentum'] = df['close'] - df['close'].shift(4)
 
-# تولید سیگنال‌ها بر اساس شکست نوسان و مومنتوم
 signals = []
 in_position = False
 entry_price = None
 
-for i in range(14, len(df)):
-    close_now = df['close'].iloc[i]
-    close_past = df['close'].iloc[i-3]
-    atr = df['atr'].iloc[i]
+for i in range(20, len(df)):
+    close = df['close'].iloc[i]
+    upper = df['bb_upper'].iloc[i]
+    bb_std = df['bb_std'].iloc[i]
     momentum = df['momentum'].iloc[i]
+    atr = df['atr'].iloc[i]
+
+    recent_std = df['bb_std'].iloc[i-3:i].mean()
 
     if not in_position:
-        if (close_now - close_past > 1.5 * atr) and (momentum > 0):
+        if (close > upper) and (recent_std < bb_std) and (momentum > 0):
             signals.append("buy")
-            entry_price = close_now
+            entry_price = close
             in_position = True
         else:
             signals.append("hold")
     else:
         tp = entry_price + 2.5 * atr
-        sl = entry_price - 1.2 * atr
+        sl = entry_price - 1.25 * atr
 
-        if close_now >= tp:
-            signals.append("sell")  # Take profit
+        if close >= tp:
+            signals.append("sell")  # Take Profit
             in_position = False
-        elif close_now <= sl:
-            signals.append("sell")  # Stop loss
+        elif close <= sl:
+            signals.append("sell")  # Stop Loss
             in_position = False
         elif momentum < 0:
-            signals.append("sell")  # خروج با برگشت مومنتوم
+            signals.append("sell")  # خروج بر اساس کاهش مومنتوم
             in_position = False
         else:
             signals.append("hold")
 
-# تطابق طول دیتافریم با سیگنال‌ها
-df = df.iloc[14:].copy()
+# هماهنگ کردن طول سیگنال‌ها با دیتافریم
+df = df.iloc[20:].copy()
 df['signal'] = signals
 
-# ذخیره سیگنال‌ها
+# ذخیره فایل نهایی سیگنال‌ها
 df.to_csv("btc_signals_15m.csv", index=False)
 
 print("buy:", signals.count("buy"))
