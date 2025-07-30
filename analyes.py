@@ -54,3 +54,13 @@ except pd.errors.ParserError:
     print("خطا در خواندن فایل CSV. لطفاً فرمت فایل را بررسی کنید.")
 except Exception as e:
     print(f"خطای پیش‌بینی‌نشده: {e}")
+
+# محاسبه MACD
+exp1 = df['close'].ewm(span=12, adjust=False).mean()
+exp2 = df['close'].ewm(span=26, adjust=False).mean()
+
+df['macd'] = exp1 - exp2
+df['signal_line'] = df['macd'].ewm(span=9, adjust=False).mean()
+
+df.to_csv("btc_15m_with_indicators.csv", index=False)
+
