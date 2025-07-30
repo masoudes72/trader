@@ -11,18 +11,33 @@ st.title("📈 داشبورد تحلیلی رمزارز - نسخه دیباگ")
 st.markdown("### 🔧 بررسی مرحله‌ای با گزارش دقیق")
 
 # اجرای فایل پایتون با importlib
-import importlib.util
+import subprocess
+import sys
 
 def run_script(script_name, label):
     try:
         st.info(f"⏳ اجرای {label}...")
-        file_path = f"./{script_name}"
-        spec = importlib.util.spec_from_file_location("module.name", file_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        st.success(f"✅ {label} با موفقیت اجرا شد.")
+        # اجرای با همان پایتونی که محیط Streamlit اجرا شده
+        result = subprocess.run(
+            [sys.executable, script_name],
+            capture_output=True, text=True
+        )
+
+        if result.returncode == 0:
+            st.success(f"✅ {label} با موفقیت اجرا شد.")
+        else:
+            st.error(f"❌ خطا در اجرای {label} (exit code {result.returncode})")
+
+        if result.stdout:
+            st.markdown("**📤 خروجی برنامه:**")
+            st.code(result.stdout, language="bash")
+
+        if result.stderr:
+            st.markdown("**❗ خطا:**")
+            st.code(result.stderr, language="bash")
+
     except Exception as e:
-        st.error(f"❌ خطا در اجرای {label}")
+        st.error(f"❌ خطای کلی در اجرای {label}")
         st.exception(e)
 
 # دکمه‌ها برای اجرای مراحل
