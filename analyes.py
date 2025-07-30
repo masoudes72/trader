@@ -1,15 +1,18 @@
 import pandas as pd
 import os
 
-# جستجوی فایل CSV کندل مناسب (BTC/USDT با تایم‌فریم 15m)
+# جستجوی فایل مناسب با انعطاف بالا
 candles_file = None
 for file in os.listdir():
-    if file.lower().endswith(".csv") and "btc" in file.lower() and "15m" in file.lower():
+    if file.lower().endswith(\".csv\") and \"btc\" in file.lower() and \"15\" in file:
         candles_file = file
         break
 
 if not candles_file:
-    raise FileNotFoundError("فایل کندل ورودی یافت نشد.")
+    raise FileNotFoundError(\"❌ فایل کندل ورودی یافت نشد. لطفاً مرحله '📥 دریافت داده' را دوباره اجرا کنید.\")
+
+df = pd.read_csv(candles_file)
+
 
 # بارگذاری داده‌ها
 df = pd.read_csv(candles_file)
