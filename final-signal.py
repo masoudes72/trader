@@ -1,36 +1,49 @@
 import pandas as pd
 
 df = pd.read_csv("btc_15m_with_indicators.csv")
-
 signals = []
+entry_price = None
 in_position = False
 
-for i in range(2, len(df)):
-    ema_9 = df['ema_9'].iloc[i]
-    ema_21 = df['ema_21'].iloc[i]
-    rsi = df['rsi_14'].iloc[i]
-    rsi_prev1 = df['rsi_14'].iloc[i-1]
-    rsi_prev2 = df['rsi_14'].iloc[i-2]
+tp_ratio = 0.02  # 2% Take Profit
+sl_ratio = 0.01  # 1% Stop Loss
+
+for i in range(1, len(df)):
+    ema_9_prev, ema_21_prev = df['ema_9'].iloc[i-1], df['ema_21'].iloc[i-1]
+    ema_9, ema_21 = df['ema_9'].iloc[i], df['ema_21'].iloc[i]
+    macd = df['macd'].iloc[i]
+    macd_signal = df['macd_signal'].iloc[i]
+    adx = df['adx'].iloc[i]
+    close = df['close'].iloc[i]
+    bb_mid = df['bb_mid'].iloc[i]
 
     if not in_position:
-        # ورود زمانی که RSI از حالت اشباع فروش برگشته و EMA تایید می‌دهد
-        if (ema_9 > ema_21) and (rsi_prev2 < 30 and rsi_prev1 < 35 and rsi > 35):
+        # ورود
+        if (ema_9_prev < ema_21_prev) and (ema_9 > ema_21) and (macd > macd_signal) and (adx > 20) and (close > bb_mid):
             signals.append("buy")
+            entry_price = close
             in_position = True
         else:
             signals.append("hold")
     else:
-        # خروج زمانی که RSI بیش از حد رشد کرده یا روند معکوس شده
-        if rsi > 70 or ema_9 < ema_21:
-            signals.append("sell")
+        # مدیریت پوزیشن
+        tp_price = entry_price * (1 + tp_ratio)
+        sl_price = entry_price * (1 - sl_ratio)
+
+        if close >= tp_price:
+            signals.append("sell")  # Take Profit
+            in_position = False
+        elif close <= sl_price:
+            signals.append("sell")  # Stop Loss
+            in_position = False
+        elif ema_9 < ema_21:
+            signals.append("sell")  # Exit on EMA reversal
             in_position = False
         else:
             signals.append("hold")
 
-# اصلاح طول DataFrame برای هم‌تراز کردن با طول سیگنال
-df = df.iloc[2:].copy()
+df = df.iloc[1:].copy()
 df['signal'] = signals
-
 df.to_csv("btc_signals_15m.csv", index=False)
 
 print("تعداد سیگنال‌ها:")
