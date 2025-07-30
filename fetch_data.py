@@ -6,7 +6,7 @@ def get_crypto_data():
     symbol = 'BTC/USDT'
     timeframe = '15m'
     limit = 1000
-    exchange_name = 'binance'
+    exchange_name = 'kucoin'
     output_filename = f'{exchange_name}_{symbol.replace("/", "_")}_{timeframe}.csv'
 
     print("🚀 شروع دریافت اطلاعات از Binance...")
