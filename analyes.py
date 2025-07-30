@@ -1,18 +1,15 @@
 import pandas as pd
 import os
 
-# 🔍 جستجوی هوشمند فایل کندل مناسب
-candles_file = None
-for file in os.listdir():
-    if file.lower().endswith(".csv") and "btc" in file.lower() and "15" in file:
-        candles_file = file
-        break
+# استفاده از فایل با نام مشخص
+raw_filename = "btc_15m_raw.csv"
 
-if not candles_file:
-    raise FileNotFoundError("❌ فایل کندل ورودی یافت نشد. ابتدا مرحله '📥 دریافت داده' را اجرا کنید.")
+# بررسی وجود فایل داده خام
+if not os.path.exists(raw_filename):
+    raise FileNotFoundError("❌ فایل کندل ورودی (btc_15m_raw.csv) یافت نشد. لطفاً مرحله '📥 دریافت داده' را اجرا کنید.")
 
-# 📊 بارگذاری داده
-df = pd.read_csv(candles_file)
+# بارگذاری داده‌ها
+df = pd.read_csv(raw_filename)
 
 # EMA
 df['ema_9'] = df['close'].ewm(span=9, adjust=False).mean()
@@ -49,9 +46,10 @@ df['atr'] = df['TR'].rolling(window=14).mean()
 # Momentum
 df['momentum'] = df['close'] - df['close'].shift(4)
 
-# ADX ثابت (در صورت نیاز)
+# ADX ثابت
 df['adx'] = 25
 
-# 💾 ذخیره خروجی
-df.to_csv("btc_15m_with_indicators.csv", index=False)
-print("✅ اندیکاتورها با موفقیت محاسبه و ذخیره شدند.")
+# ذخیره خروجی نهایی
+indicator_output = "btc_15m_with_indicators.csv"
+df.to_csv(indicator_output, index=False)
+print(f"✅ اندیکاتورها ذخیره شدند: {indicator_output}")
