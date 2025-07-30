@@ -7,7 +7,7 @@ try:
         raise FileNotFoundError("فایل 'mexc_BTC_USDT_15m.csv' یافت نشد.")
 
     # خواندن داده
-    df = pd.read_csv("mexc_BTC_USDT_15m.csv")
+    df = pd.read_csv("kucoin_BTC_USDT_15m.csv")
 
     # بررسی ستون‌های ضروری
     if not {'close'}.issubset(df.columns.str.lower()):
