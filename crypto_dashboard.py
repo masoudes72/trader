@@ -111,17 +111,18 @@ if os.path.exists("btc_signals_15m.csv"):
         avg_profit = net_profit / num_trades if num_trades > 0 else 0
         win_rate = (len(profits) / num_trades * 100) if num_trades > 0 else 0
 
-        st.markdown("### 📊 خلاصه عملکرد")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("📈 تعداد معاملات", num_trades)
-        col2.metric("💵 سود خالص", f"{net_profit:.2f} $")
-        col3.metric("✅ درصد برد", f"{win_rate:.2f} %")
+        with st.container():
+            st.markdown("### 📊 خلاصه عملکرد")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("📈 تعداد معاملات", num_trades)
+            col2.metric("💵 سود خالص", f"{net_profit:.2f} $")
+            col3.metric("✅ درصد برد", f"{win_rate:.2f} %")
 
-        col4, col5 = st.columns(2)
-        col4.metric("📗 مجموع سودها", f"{total_profit:.2f} $")
-        col5.metric("📕 مجموع ضررها", f"{total_loss:.2f} $")
+            col4, col5 = st.columns(2)
+            col4.metric("📗 مجموع سودها", f"{total_profit:.2f} $")
+            col5.metric("📕 مجموع ضررها", f"{total_loss:.2f} $")
 
-        st.markdown(f"🟡 میانگین سود هر معامله: `{avg_profit:.2f} $`")
+            st.markdown(f"🟡 میانگین سود هر معامله: `{avg_profit:.2f} $`")
 
         # --- نمودار رشد سرمایه ---
         equity = [1000]
@@ -129,10 +130,10 @@ if os.path.exists("btc_signals_15m.csv"):
             equity.append(equity[-1] + pnl)
 
         st.subheader("📈 نمودار رشد سرمایه")
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(12, 6))
         ax.plot(equity, marker="o", color="green")
-        ax.set_title("نمودار رشد سرمایه (Equity Curve)")
-        ax.set_xlabel("تعداد معاملات")
-        ax.set_ylabel("سرمایه (دلار)")
+        ax.set_title("نمودار رشد سرمایه (Equity Curve)", fontsize=16)
+        ax.set_xlabel("تعداد معاملات", fontsize=12)
+        ax.set_ylabel("سرمایه (دلار)", fontsize=12)
         ax.grid(True)
         st.pyplot(fig)
