@@ -3,7 +3,7 @@ import pandas as pd
 
 try:
     # بررسی وجود فایل
-    if not os.path.exists("binance_BTC_USDT_15m.csv"):
+    if not os.path.exists("kucoin_BTC_USDT_15m.csv"):
         raise FileNotFoundError("فایل 'mexc_BTC_USDT_15m.csv' یافت نشد.")
 
     # خواندن داده
