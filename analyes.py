@@ -1,67 +1,57 @@
 import pandas as pd
 import os
 
-# تشخیص خودکار فایل کندل دیتا
+# جستجوی فایل CSV کندل مناسب (BTC/USDT با تایم‌فریم 15m)
+candles_file = None
 for file in os.listdir():
-    if file.endswith("_BTC_USDT_15m.csv"):
-        df = pd.read_csv(file)
+    if file.lower().endswith(".csv") and "btc" in file.lower() and "15m" in file.lower():
+        candles_file = file
         break
-else:
+
+if not candles_file:
     raise FileNotFoundError("فایل کندل ورودی یافت نشد.")
-# بررسی اینکه ستون‌های مورد نیاز وجود دارند یا محاسبه شوند
-if 'atr' not in df.columns:
-    df['H-L'] = df['high'] - df['low']
-    df['H-PC'] = abs(df['high'] - df['close'].shift(1))
-    df['L-PC'] = abs(df['low'] - df['close'].shift(1))
-    df['TR'] = df[['H-L', 'H-PC', 'L-PC']].max(axis=1)
-    df['atr'] = df['TR'].rolling(window=14).mean()
 
-if 'momentum' not in df.columns:
-    df['momentum'] = df['close'] - df['close'].shift(4)
+# بارگذاری داده‌ها
+df = pd.read_csv(candles_file)
 
-signals = []
-in_position = False
-entry_price = None
+# محاسبه EMA
+df['ema_9'] = df['close'].ewm(span=9, adjust=False).mean()
+df['ema_21'] = df['close'].ewm(span=21, adjust=False).mean()
 
-for i in range(20, len(df)):
-    close = df['close'].iloc[i]
-    upper = df['bb_upper'].iloc[i]
-    bb_std = df['bb_std'].iloc[i]
-    momentum = df['momentum'].iloc[i]
-    atr = df['atr'].iloc[i]
+# محاسبه RSI
+delta = df['close'].diff()
+gain = delta.where(delta > 0, 0)
+loss = -delta.where(delta < 0, 0)
+avg_gain = gain.rolling(window=14).mean()
+avg_loss = loss.rolling(window=14).mean()
+rs = avg_gain / avg_loss
+df['rsi_14'] = 100 - (100 / (1 + rs))
 
-    recent_std = df['bb_std'].iloc[i-3:i].mean()
+# MACD و Signal Line
+exp1 = df['close'].ewm(span=12, adjust=False).mean()
+exp2 = df['close'].ewm(span=26, adjust=False).mean()
+df['macd'] = exp1 - exp2
+df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
 
-    if not in_position:
-        if (close > upper) and (recent_std < bb_std) and (momentum > 0):
-            signals.append("buy")
-            entry_price = close
-            in_position = True
-        else:
-            signals.append("hold")
-    else:
-        tp = entry_price + 2.5 * atr
-        sl = entry_price - 1.25 * atr
+# Bollinger Bands
+df['bb_mid'] = df['close'].rolling(window=20).mean()
+df['bb_std'] = df['close'].rolling(window=20).std()
+df['bb_upper'] = df['bb_mid'] + 2 * df['bb_std']
+df['bb_lower'] = df['bb_mid'] - 2 * df['bb_std']
 
-        if close >= tp:
-            signals.append("sell")  # Take Profit
-            in_position = False
-        elif close <= sl:
-            signals.append("sell")  # Stop Loss
-            in_position = False
-        elif momentum < 0:
-            signals.append("sell")  # خروج بر اساس کاهش مومنتوم
-            in_position = False
-        else:
-            signals.append("hold")
+# ATR
+df['H-L'] = df['high'] - df['low']
+df['H-PC'] = abs(df['high'] - df['close'].shift(1))
+df['L-PC'] = abs(df['low'] - df['close'].shift(1))
+df['TR'] = df[['H-L', 'H-PC', 'L-PC']].max(axis=1)
+df['atr'] = df['TR'].rolling(window=14).mean()
 
-# هماهنگ کردن طول سیگنال‌ها با دیتافریم
-df = df.iloc[20:].copy()
-df['signal'] = signals
+# Momentum
+df['momentum'] = df['close'] - df['close'].shift(4)
 
-# ذخیره فایل نهایی سیگنال‌ها
-df.to_csv("btc_signals_15m.csv", index=False)
+# ADX ثابت موقت (در صورت نیاز)
+df['adx'] = 25
 
-print("buy:", signals.count("buy"))
-print("sell:", signals.count("sell"))
-print("hold:", signals.count("hold"))
+# ذخیره خروجی اندیکاتورها
+df.to_csv("btc_15m_with_indicators.csv", index=False)
+print("✅ اندیکاتورها با موفقیت محاسبه و ذخیره شدند.")
