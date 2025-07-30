@@ -5,81 +5,88 @@ import importlib.util
 import os
 import time
 
-st.set_page_config(page_title="داشبورد سیگنال رمزارز", layout="wide")
+st.set_page_config(page_title="📊 داشبورد تحلیل رمزارز", layout="wide")
 
-# ✅ هدر بالا
+# --- استایل سفارشی ---
 st.markdown("""
 <style>
-h1 {
-    text-align: center;
-    color: #2c3e50;
-}
-div.block-container {
-    padding-top: 1rem;
-}
+    h1 {
+        text-align: center;
+        color: #2c3e50;
+    }
+    .block-container {
+        padding-top: 2rem;
+    }
+    .stButton button {
+        border-radius: 0.5rem;
+        padding: 0.6rem 1.5rem;
+        background-color: #1abc9c;
+        color: white;
+        font-weight: bold;
+    }
+    .stButton button:hover {
+        background-color: #16a085;
+        color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
+# --- هدر ---
 st.title("📈 داشبورد تحلیل، سیگنال‌گیری و ارزیابی رمزارز")
-st.markdown("🔹 تحلیل تکنیکال و ارزیابی عملکرد بر اساس اندیکاتورها و سیگنال‌های هوشمند")
-
+st.markdown("🔹 تحلیل تکنیکال رمزارز با اندیکاتورها، سیگنال‌ها و ارزیابی استراتژی معاملاتی")
 st.markdown("---")
 
-# ✅ اجرای فایل‌ها با importlib
+# --- اجرای فایل پایتون ---
 def run_script(script_name, label):
     try:
-        with st.spinner(f"⏳ اجرای {label}..."):
+        with st.spinner(f"⏳ در حال اجرای {label}..."):
             file_path = f"./{script_name}"
             spec = importlib.util.spec_from_file_location("module.name", file_path)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             time.sleep(1)
-        st.success(f"✅ {label} با موفقیت انجام شد.")
+        st.success(f"✅ {label} اجرا شد.")
     except Exception as e:
         st.error(f"❌ خطا در اجرای {label}")
         st.exception(e)
 
-# ✅ بخش دکمه‌ها
-with st.expander("⚙️ اجرای مراحل تحلیل و سیگنال‌دهی", expanded=True):
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col1:
-        if st.button("📥 مرحله ۱: دریافت داده"):
-            run_script("fetch_data.py", "دریافت داده")
+# --- دکمه‌های مرحله‌ای ---
+st.markdown("### 🎛 اجرای مراحل")
+col1, col2, col3 = st.columns(3)
+with col1:
+    if st.button("📥 دریافت داده از صرافی"):
+        run_script("fetch_data.py", "دریافت داده")
+    if st.button("📊 محاسبه اندیکاتورها"):
+        run_script("analyes.py", "محاسبه اندیکاتورها")
 
-        if st.button("📊 مرحله ۲: محاسبه اندیکاتورها"):
-            run_script("analyes.py", "محاسبه اندیکاتورها")
+with col2:
+    if st.button("📈 تولید سیگنال‌ها"):
+        run_script("final-signal.py", "تولید سیگنال")
+    if st.button("💰 تحلیل عملکرد معاملات"):
+        run_script("result.py", "تحلیل معاملات")
 
-    with col2:
-        if st.button("📈 مرحله ۳: تولید سیگنال"):
-            run_script("final-signal.py", "تولید سیگنال")
-
-        if st.button("💰 مرحله ۴: تحلیل عملکرد"):
-            run_script("result.py", "تحلیل معاملات")
-
-    with col3:
-        if st.button("🔄 اجرای کامل (۱ تا ۴)"):
-            for script, label in [
-                ("fetch_data.py", "دریافت داده"),
-                ("analyes.py", "محاسبه اندیکاتورها"),
-                ("final-signal.py", "تولید سیگنال"),
-                ("result.py", "تحلیل معاملات"),
-            ]:
-                run_script(script, label)
+with col3:
+    if st.button("🔄 اجرای همه مراحل"):
+        for script, label in [
+            ("fetch_data.py", "دریافت داده"),
+            ("analyes.py", "محاسبه اندیکاتورها"),
+            ("final-signal.py", "تولید سیگنال"),
+            ("result.py", "تحلیل معاملات"),
+        ]:
+            run_script(script, label)
 
 st.markdown("---")
 
-# ✅ نمایش آخرین سیگنال‌ها
+# --- جدول سیگنال‌ها ---
 if os.path.exists("btc_signals_15m.csv"):
     df = pd.read_csv("btc_signals_15m.csv")
-    st.subheader("📋 سیگنال‌های اخیر")
+    st.subheader("📋 آخرین سیگنال‌ها")
     st.dataframe(df.tail(15), use_container_width=True)
 
-# ✅ تحلیل معاملات و نمایش آمار
+# --- تحلیل معاملات ---
 if os.path.exists("btc_signals_15m.csv"):
     df = pd.read_csv("btc_signals_15m.csv")
     if "signal" in df.columns and "close" in df.columns:
-        st.subheader("📊 ارزیابی استراتژی")
-
         trades = []
         in_position = False
         entry_price = 0.0
@@ -104,12 +111,11 @@ if os.path.exists("btc_signals_15m.csv"):
         avg_profit = net_profit / num_trades if num_trades > 0 else 0
         win_rate = (len(profits) / num_trades * 100) if num_trades > 0 else 0
 
-        # 📦 نمایش کارت‌های آمار
         st.markdown("### 📊 خلاصه عملکرد")
         col1, col2, col3 = st.columns(3)
-        col1.metric("تعداد معاملات", num_trades)
-        col2.metric("سود خالص", f"{net_profit:.2f} $")
-        col3.metric("درصد برد", f"{win_rate:.2f} %")
+        col1.metric("📈 تعداد معاملات", num_trades)
+        col2.metric("💵 سود خالص", f"{net_profit:.2f} $")
+        col3.metric("✅ درصد برد", f"{win_rate:.2f} %")
 
         col4, col5 = st.columns(2)
         col4.metric("📗 مجموع سودها", f"{total_profit:.2f} $")
@@ -117,7 +123,7 @@ if os.path.exists("btc_signals_15m.csv"):
 
         st.markdown(f"🟡 میانگین سود هر معامله: `{avg_profit:.2f} $`")
 
-        # ✅ نمودار رشد سرمایه
+        # --- نمودار رشد سرمایه ---
         equity = [1000]
         for pnl in trades:
             equity.append(equity[-1] + pnl)
