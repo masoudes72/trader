@@ -4,37 +4,25 @@ import matplotlib.pyplot as plt
 import importlib.util
 import os
 
+
 st.set_page_config(page_title="📊 داشبورد سیگنال رمزارز", layout="wide")
 st.title("📈 داشبورد تحلیلی رمزارز - نسخه دیباگ")
 
 st.markdown("### 🔧 بررسی مرحله‌ای با گزارش دقیق")
 
 # اجرای فایل پایتون با importlib
-import subprocess
+import importlib.util
 
 def run_script(script_name, label):
     try:
         st.info(f"⏳ اجرای {label}...")
-        result = subprocess.run(["python", script_name], capture_output=True, text=True)
-        
-        # وضعیت اجرا
-        if result.returncode == 0:
-            st.success(f"✅ {label} با موفقیت اجرا شد.")
-        else:
-            st.error(f"❌ خطا در اجرای {label} (exit code {result.returncode})")
-        
-        # خروجی استاندارد (stdout)
-        if result.stdout:
-            st.markdown("**📤 خروجی برنامه:**")
-            st.code(result.stdout, language="bash")
-
-        # خطاهای استاندارد (stderr)
-        if result.stderr:
-            st.markdown("**❗ خطا:**")
-            st.code(result.stderr, language="bash")
-
+        file_path = f"./{script_name}"
+        spec = importlib.util.spec_from_file_location("module.name", file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        st.success(f"✅ {label} با موفقیت اجرا شد.")
     except Exception as e:
-        st.error(f"❌ اجرای فایل {script_name} با خطای کلی مواجه شد.")
+        st.error(f"❌ خطا در اجرای {label}")
         st.exception(e)
 
 # دکمه‌ها برای اجرای مراحل
