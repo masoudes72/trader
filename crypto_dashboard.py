@@ -1,26 +1,27 @@
 import streamlit as st
-import subprocess
 import pandas as pd
 import matplotlib.pyplot as plt
+import importlib.util
 import os
 
 st.set_page_config(page_title="داشبورد سیگنال رمزارز", layout="centered")
-
 st.title("📈 داشبورد تحلیل و سیگنال رمزارز")
 st.markdown("---")
 
-# اجرای هر اسکریپت با دکمه مربوطه
+# تابع اجرای مستقیم فایل‌های پایتون
 def run_script(script_name, label):
-    with st.spinner(f"در حال اجرای {label}..."):
-        try:
-            result = subprocess.run(["python", script_name], capture_output=True, text=True, check=True)
-            st.success(f"✅ {label} با موفقیت اجرا شد.")
-            st.code(result.stdout)
-        except subprocess.CalledProcessError as e:
-            st.error(f"❌ خطا در اجرای {label}")
-            st.code(e.stderr)
+    try:
+        st.info(f"⏳ در حال اجرای {label} ...")
+        file_path = f"./{script_name}"
+        spec = importlib.util.spec_from_file_location("module.name", file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        st.success(f"✅ {label} با موفقیت اجرا شد.")
+    except Exception as e:
+        st.error(f"❌ خطا در اجرای {label}")
+        st.exception(e)
 
-# بخش دکمه‌ها
+# دکمه‌های اجرای هر مرحله
 col1, col2 = st.columns(2)
 with col1:
     if st.button("📥 دریافت داده از صرافی"):
@@ -36,25 +37,26 @@ with col2:
     if st.button("💰 تحلیل معاملات"):
         run_script("result.py", "تحلیل معاملات")
 
-# دکمه اجرای همه
+# اجرای کامل مراحل به‌ترتیب
 if st.button("🔄 اجرای همه مراحل"):
-    for script, label in [
+    steps = [
         ("fetch_data.py", "دریافت داده"),
         ("analyes.py", "محاسبه اندیکاتورها"),
         ("final-signal.py", "تولید سیگنال"),
         ("result.py", "تحلیل معاملات"),
-    ]:
+    ]
+    for script, label in steps:
         run_script(script, label)
 
 st.markdown("---")
 
 # نمایش جدول سیگنال‌ها
 if os.path.exists("btc_signals_15m.csv"):
-    st.subheader("📋 جدول سیگنال‌های تولید شده")
+    st.subheader("📋 جدول سیگنال‌های اخیر")
     df = pd.read_csv("btc_signals_15m.csv")
     st.dataframe(df.tail(20))
 
-# نمایش نمودار رشد سرمایه
+# رسم نمودار رشد سرمایه
 if os.path.exists("btc_signals_15m.csv"):
     df = pd.read_csv("btc_signals_15m.csv")
     if "signal" in df.columns and "close" in df.columns:
