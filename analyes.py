@@ -64,3 +64,20 @@ df['signal_line'] = df['macd'].ewm(span=9, adjust=False).mean()
 
 df.to_csv("btc_15m_with_indicators.csv", index=False)
 
+# MACD
+exp1 = df['close'].ewm(span=12, adjust=False).mean()
+exp2 = df['close'].ewm(span=26, adjust=False).mean()
+df['macd'] = exp1 - exp2
+df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+
+# ADX
+import pandas_ta as ta
+adx = ta.adx(df['high'], df['low'], df['close'], length=14)
+df['adx'] = adx['ADX_14']
+
+# Bollinger Bands
+df['bb_mid'] = df['close'].rolling(window=20).mean()
+df['bb_std'] = df['close'].rolling(window=20).std()
+df['bb_upper'] = df['bb_mid'] + 2 * df['bb_std']
+df['bb_lower'] = df['bb_mid'] - 2 * df['bb_std']
+
