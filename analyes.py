@@ -45,7 +45,24 @@ df['atr'] = tr.rolling(window=14).mean()
 df['momentum'] = df['close'] - df['close'].shift(4)
 
 # --- ADX (ثابت فرض شده برای تست) ---
-df['adx'] = 25
+up_move = df['high'].diff()
+down_move = df['low'].diff() * -1
+
+plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0)
+minus_dm = np.where((down_move > up_move) & (down_move > 0), down_move, 0)
+
+tr1 = df['high'] - df['low']
+tr2 = np.abs(df['high'] - df['close'].shift(1))
+tr3 = np.abs(df['low'] - df['close'].shift(1))
+tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+
+atr = tr.rolling(window=14).mean()
+plus_di = 100 * pd.Series(plus_dm).rolling(window=14).mean() / atr
+minus_di = 100 * pd.Series(minus_dm).rolling(window=14).mean() / atr
+
+dx = 100 * np.abs(plus_di - minus_di) / (plus_di + minus_di)
+df['adx'] = dx.rolling(window=14).mean()
+
 
 # --- ذخیره خروجی ---
 df.to_csv("btc_15m_with_indicators.csv", index=False)
