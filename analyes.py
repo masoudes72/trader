@@ -62,6 +62,18 @@ minus_di = 100 * pd.Series(minus_dm).rolling(window=14).mean() / atr
 
 dx = 100 * np.abs(plus_di - minus_di) / (plus_di + minus_di)
 df['adx'] = dx.rolling(window=14).mean()
+# --- OBV (On-Balance Volume) دستی ---
+obv = [0]  # مقدار شروع
+
+for i in range(1, len(df)):
+    if df['close'][i] > df['close'][i - 1]:
+        obv.append(obv[-1] + df['volume'][i])
+    elif df['close'][i] < df['close'][i - 1]:
+        obv.append(obv[-1] - df['volume'][i])
+    else:
+        obv.append(obv[-1])
+
+df['obv'] = obv
 
 
 # --- ذخیره خروجی ---
