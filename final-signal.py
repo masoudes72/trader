@@ -6,10 +6,10 @@ df = pd.read_csv("btc_15m_with_indicators.csv")
 
 # --- پارامترها ---
 initial_balance = 10000
-risk_per_trade = 0.02
-SL_LIMIT = 0.01
-TRAIL_START = 0.012
-TRAIL_GAP = 0.008
+risk_per_trade = 0.2
+SL_LIMIT = 0.1
+TRAIL_START = 0.12
+TRAIL_GAP = 0.08
 
 signals = []
 position_sizes = []
