@@ -7,7 +7,7 @@ import time
 
 st.set_page_config(page_title="📊 داشبورد تحلیل رمزارز", layout="wide")
 
-# --- استایل سفارشی ---
+# --- استایل ---
 st.markdown("""
 <style>
     h1 {
@@ -31,10 +31,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- هدر ---
+# --- عنوان ---
 st.title("📈 داشبورد تحلیل، سیگنال‌گیری و ارزیابی رمزارز")
 st.markdown("🔹 تحلیل تکنیکال رمزارز با اندیکاتورها، سیگنال‌ها و ارزیابی استراتژی معاملاتی")
 st.markdown("---")
+
 
 # --- اجرای فایل پایتون ---
 def run_script(script_name, label):
@@ -46,22 +47,36 @@ def run_script(script_name, label):
             spec.loader.exec_module(module)
             time.sleep(1)
         st.success(f"✅ {label} اجرا شد.")
+        return True
     except Exception as e:
         st.error(f"❌ خطا در اجرای {label}")
         st.exception(e)
+        return False
 
-# --- دکمه‌های مرحله‌ای ---
+
+# --- دکمه‌ها ---
 st.markdown("### 🎛 اجرای مراحل")
 col1, col2, col3 = st.columns(3)
+
 with col1:
     if st.button("📥 دریافت داده از صرافی"):
-        run_script("fetch_data.py", "دریافت داده")
+        result = run_script("fetch_data.py", "دریافت داده")
+        if result and os.path.exists("btc_15m_raw.csv"):
+            with open("btc_15m_raw.csv", "rb") as f:
+                st.download_button(
+                    label="⬇️ دانلود فایل CSV خام",
+                    data=f,
+                    file_name="btc_15m_raw.csv",
+                    mime="text/csv"
+                )
+
     if st.button("📊 محاسبه اندیکاتورها"):
         run_script("analyes.py", "محاسبه اندیکاتورها")
 
 with col2:
     if st.button("📈 تولید سیگنال‌ها"):
         run_script("final-signal.py", "تولید سیگنال")
+
     if st.button("💰 تحلیل عملکرد معاملات"):
         run_script("result.py", "تحلیل معاملات")
 
@@ -77,13 +92,15 @@ with col3:
 
 st.markdown("---")
 
+
 # --- جدول سیگنال‌ها ---
 if os.path.exists("btc_signals_15m.csv"):
     df = pd.read_csv("btc_signals_15m.csv")
     st.subheader("📋 آخرین سیگنال‌ها")
     st.dataframe(df.tail(15), use_container_width=True)
 
-# --- تحلیل معاملات ---
+
+# --- تحلیل عملکرد ---
 if os.path.exists("btc_signals_15m.csv"):
     df = pd.read_csv("btc_signals_15m.csv")
     if "signal" in df.columns and "close" in df.columns:
