@@ -3,7 +3,7 @@ import pandas as pd
 import time
 
 # --- پارامترها ---
-symbol = 'BTC/USDT'
+symbol = 'ADA/USDT'
 exchange = ccxt.kucoin()
 limit = 1000
 
