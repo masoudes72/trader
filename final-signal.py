@@ -4,11 +4,11 @@ import numpy as np
 df = pd.read_csv("btc_15m_with_indicators.csv")
 
 # --- پارامترهای استراتژی ---
-POSITION_DOLLAR = 100         # حجم پوزیشن ثابت
-MAX_RISK_DOLLAR = 40          # حداکثر ضرر مجاز
-RR = 1.5                      # نسبت سود به ضرر
-TRAIL_ACTIVE_AT = 1.0         # فعال‌سازی trailing بعد از 1× ریسک
-TRAIL_DISTANCE = 20           # فاصله trailing: 20 دلار
+POSITION_DOLLAR = 100
+MAX_RISK_DOLLAR = 40
+RR = 1.5
+TRAIL_ACTIVE_AT = 1.0
+TRAIL_DISTANCE = 20  # دلار
 
 signals = []
 entry_prices = []
@@ -22,25 +22,21 @@ tp_price = 0
 trailing_active = False
 trailing_stop = 0
 
-# --- بررسی کندل تاییدی ساده ---
-def valid_entry_candle(prev, curr):
-    return curr['close'] > curr['open'] and prev['close'] < prev['open']
-
 for i in range(1, len(df)):
     prev = df.iloc[i - 1]
     curr = df.iloc[i]
 
     price = curr['close']
-    candle_ok = valid_entry_candle(prev, curr)
+
+    # کندل ساده صعودی
+    candle_ok = curr['close'] > curr['open']
 
     # ورود
     if not in_position:
         if (
             candle_ok and
             curr['ema_9'] > curr['ema_21'] and
-            curr['close'] > curr['ema_200_1h'] and
-            curr['adx_1h'] > 25 and
-            25 < curr['rsi_14'] < 70
+            curr['close'] > curr['ema_200_1h']
         ):
             entry_price = price
             stop_price = entry_price - (MAX_RISK_DOLLAR / POSITION_DOLLAR) * entry_price
@@ -61,15 +57,14 @@ for i in range(1, len(df)):
 
     # خروج
     else:
-        current_gain = price - entry_price
-        gain_dollar = current_gain * position_size
+        gain = (price - entry_price) * position_size
 
         # فعال‌سازی trailing stop
-        if not trailing_active and gain_dollar >= MAX_RISK_DOLLAR:
+        if not trailing_active and gain >= MAX_RISK_DOLLAR:
             trailing_active = True
             trailing_stop = price - (TRAIL_DISTANCE / position_size)
 
-        # به حد ضرر یا trailing خورد؟
+        # خروج به دلایل مختلف
         if price <= stop_price or (trailing_active and price <= trailing_stop):
             signals.append("sell")
             in_position = False
@@ -79,7 +74,6 @@ for i in range(1, len(df)):
             entry_prices.append(0)
             position_sizes.append(0)
 
-        # به حد سود کلاسیک رسید (اگر trailing فعال نباشه)
         elif not trailing_active and price >= tp_price:
             signals.append("sell")
             in_position = False
@@ -90,7 +84,7 @@ for i in range(1, len(df)):
             position_sizes.append(0)
 
         else:
-            # به‌روزرسانی trailing stop در صورت فعال بودن
+            # بروزرسانی trailing stop
             if trailing_active and price - (TRAIL_DISTANCE / position_size) > trailing_stop:
                 trailing_stop = price - (TRAIL_DISTANCE / position_size)
 
@@ -105,4 +99,4 @@ df['entry_price'] = entry_prices
 df['position_size'] = position_sizes
 df.to_csv("btc_signals_15m.csv", index=False)
 
-print("✅ سیگنال‌ها با حجم ثابت 100 دلار، ریسک ثابت 40 دلار، RR=1.5 و Trailing Stop تولید شدند.")
+print("✅ نسخه ساده‌شده با ورود راحت‌تر، RR=1.5، ضرر ثابت 40 دلار و حجم ثابت 100 دلار تولید شد.")
