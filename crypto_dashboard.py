@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import importlib.util
 import os
 import time
+import zipfile
+from io import BytesIO
 
 st.set_page_config(page_title="📊 داشبورد تحلیل رمزارز", layout="wide")
 
@@ -31,11 +33,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- عنوان ---
 st.title("📈 داشبورد تحلیل، سیگنال‌گیری و ارزیابی رمزارز")
 st.markdown("🔹 تحلیل تکنیکال رمزارز با اندیکاتورها، سیگنال‌ها و ارزیابی استراتژی معاملاتی")
 st.markdown("---")
-
 
 # --- اجرای فایل پایتون ---
 def run_script(script_name, label):
@@ -71,34 +71,85 @@ with col1:
                 )
 
     if st.button("📊 محاسبه اندیکاتورها"):
-        run_script("analyes.py", "محاسبه اندیکاتورها")
+        result = run_script("analyes.py", "محاسبه اندیکاتورها")
+        if result and os.path.exists("btc_15m_with_indicators.csv"):
+            with open("btc_15m_with_indicators.csv", "rb") as f:
+                st.download_button(
+                    label="⬇️ دانلود فایل اندیکاتورها",
+                    data=f,
+                    file_name="btc_15m_with_indicators.csv",
+                    mime="text/csv"
+                )
 
 with col2:
     if st.button("📈 تولید سیگنال‌ها"):
-        run_script("final-signal.py", "تولید سیگنال")
+        result = run_script("final-signal.py", "تولید سیگنال")
+        if result and os.path.exists("btc_signals_15m.csv"):
+            with open("btc_signals_15m.csv", "rb") as f:
+                st.download_button(
+                    label="⬇️ دانلود فایل سیگنال‌ها",
+                    data=f,
+                    file_name="btc_signals_15m.csv",
+                    mime="text/csv"
+                )
 
     if st.button("💰 تحلیل عملکرد معاملات"):
-        run_script("result.py", "تحلیل معاملات")
+        result = run_script("result.py", "تحلیل معاملات")
+        if result and os.path.exists("btc_signals_15m.csv"):
+            with open("btc_signals_15m.csv", "rb") as f:
+                st.download_button(
+                    label="⬇️ دانلود فایل سیگنال‌ها (برای تحلیل)",
+                    data=f,
+                    file_name="btc_signals_15m.csv",
+                    mime="text/csv"
+                )
 
 with col3:
     if st.button("🔄 اجرای همه مراحل"):
+        all_ok = True
         for script, label in [
             ("fetch_data.py", "دریافت داده"),
             ("analyes.py", "محاسبه اندیکاتورها"),
             ("final-signal.py", "تولید سیگنال"),
             ("result.py", "تحلیل معاملات"),
         ]:
-            run_script(script, label)
+            success = run_script(script, label)
+            all_ok = all_ok and success
 
+        if all_ok:
+            st.success("🎉 همه مراحل با موفقیت اجرا شدند.")
+
+
+# --- لینک دانلود همه فایل‌ها به‌صورت ZIP ---
 st.markdown("---")
+st.subheader("📦 دانلود همه فایل‌های خروجی به‌صورت یکجا")
 
+output_files = [
+    ("btc_15m_raw.csv", "داده خام"),
+    ("btc_15m_with_indicators.csv", "با اندیکاتورها"),
+    ("btc_signals_15m.csv", "سیگنال‌ها")
+]
+
+# ساخت فایل zip در حافظه
+zip_buffer = BytesIO()
+with zipfile.ZipFile(zip_buffer, "w") as zipf:
+    for file_name, _ in output_files:
+        if os.path.exists(file_name):
+            zipf.write(file_name, arcname=file_name)
+zip_buffer.seek(0)
+
+st.download_button(
+    label="⬇️ دانلود همه فایل‌ها (ZIP)",
+    data=zip_buffer,
+    file_name="crypto_outputs.zip",
+    mime="application/zip"
+)
 
 # --- جدول سیگنال‌ها ---
 if os.path.exists("btc_signals_15m.csv"):
     df = pd.read_csv("btc_signals_15m.csv")
     st.subheader("📋 آخرین سیگنال‌ها")
     st.dataframe(df.tail(15), use_container_width=True)
-
 
 # --- تحلیل عملکرد ---
 if os.path.exists("btc_signals_15m.csv"):
@@ -122,26 +173,23 @@ if os.path.exists("btc_signals_15m.csv"):
         num_trades = len(trades)
         profits = [p for p in trades if p > 0]
         losses = [p for p in trades if p <= 0]
-        total_profit = sum(profits)
-        total_loss = sum(losses)
-        net_profit = total_profit + total_loss
+        net_profit = sum(profits) + sum(losses)
         avg_profit = net_profit / num_trades if num_trades > 0 else 0
         win_rate = (len(profits) / num_trades * 100) if num_trades > 0 else 0
 
-        with st.container():
-            st.markdown("### 📊 خلاصه عملکرد")
-            col1, col2, col3 = st.columns(3)
-            col1.metric("📈 تعداد معاملات", num_trades)
-            col2.metric("💵 سود خالص", f"{net_profit:.2f} $")
-            col3.metric("✅ درصد برد", f"{win_rate:.2f} %")
+        st.markdown("### 📊 خلاصه عملکرد")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("📈 تعداد معاملات", num_trades)
+        col2.metric("💵 سود خالص", f"{net_profit:.2f} $")
+        col3.metric("✅ درصد برد", f"{win_rate:.2f} %")
 
-            col4, col5 = st.columns(2)
-            col4.metric("📗 مجموع سودها", f"{total_profit:.2f} $")
-            col5.metric("📕 مجموع ضررها", f"{total_loss:.2f} $")
+        col4, col5 = st.columns(2)
+        col4.metric("📗 مجموع سودها", f"{sum(profits):.2f} $")
+        col5.metric("📕 مجموع ضررها", f"{sum(losses):.2f} $")
 
-            st.markdown(f"🟡 میانگین سود هر معامله: `{avg_profit:.2f} $`")
+        st.markdown(f"🟡 میانگین سود هر معامله: `{avg_profit:.2f} $`")
 
-        # --- نمودار رشد سرمایه ---
+        # نمودار رشد سرمایه
         equity = [1000]
         for pnl in trades:
             equity.append(equity[-1] + pnl)
