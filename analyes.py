@@ -29,7 +29,22 @@ ema12 = df['close'].ewm(span=12).mean()
 ema26 = df['close'].ewm(span=26).mean()
 df['macd'] = ema12 - ema26
 df['macd_signal'] = df['macd'].ewm(span=9).mean()
+# --- ADX 15m ---
+up_move_15 = df['high'].diff()
+down_move_15 = df['low'].diff() * -1
+plus_dm_15 = np.where((up_move_15 > down_move_15) & (up_move_15 > 0), up_move_15, 0)
+minus_dm_15 = np.where((down_move_15 > up_move_15) & (down_move_15 > 0), down_move_15, 0)
 
+tr1_15 = df['high'] - df['low']
+tr2_15 = abs(df['high'] - df['close'].shift())
+tr3_15 = abs(df['low'] - df['close'].shift())
+tr_15 = pd.concat([tr1_15, tr2_15, tr3_15], axis=1).max(axis=1)
+atr_15 = pd.Series(tr_15).rolling(window=14).mean()
+
+plus_di_15 = 100 * pd.Series(plus_dm_15).rolling(window=14).mean() / atr_15
+minus_di_15 = 100 * pd.Series(minus_dm_15).rolling(window=14).mean() / atr_15
+dx_15 = 100 * abs(plus_di_15 - minus_di_15) / (plus_di_15 + minus_di_15)
+df['adx'] = dx_15.rolling(window=14).mean()
 # Bollinger Bands
 df['bb_mid'] = df['close'].rolling(window=20).mean()
 df['bb_std'] = df['close'].rolling(window=20).std()
@@ -82,22 +97,7 @@ df_final = pd.merge_asof(df.sort_values('timestamp'),
                          df_1h_reduced.sort_values('timestamp'),
                          on='timestamp',
                          direction='backward')
-# --- ADX 15m ---
-up_move_15 = df['high'].diff()
-down_move_15 = df['low'].diff() * -1
-plus_dm_15 = np.where((up_move_15 > down_move_15) & (up_move_15 > 0), up_move_15, 0)
-minus_dm_15 = np.where((down_move_15 > up_move_15) & (down_move_15 > 0), down_move_15, 0)
 
-tr1_15 = df['high'] - df['low']
-tr2_15 = abs(df['high'] - df['close'].shift())
-tr3_15 = abs(df['low'] - df['close'].shift())
-tr_15 = pd.concat([tr1_15, tr2_15, tr3_15], axis=1).max(axis=1)
-atr_15 = pd.Series(tr_15).rolling(window=14).mean()
-
-plus_di_15 = 100 * pd.Series(plus_dm_15).rolling(window=14).mean() / atr_15
-minus_di_15 = 100 * pd.Series(minus_dm_15).rolling(window=14).mean() / atr_15
-dx_15 = 100 * abs(plus_di_15 - minus_di_15) / (plus_di_15 + minus_di_15)
-df['adx'] = dx_15.rolling(window=14).mean()
 
 # --- ذخیره خروجی ---
 df_final.to_csv("btc_15m_with_indicators.csv", index=False)
