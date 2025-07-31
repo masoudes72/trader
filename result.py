@@ -1,55 +1,64 @@
 import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
 
-# --- بارگذاری داده سیگنال‌ها ---
-df = pd.read_csv("btc_signals_15m.csv")
+# --- بارگذاری داده ---
+df = pd.read_csv("btc_15m_with_indicators.csv")
 
-balance = 10000
-equity_curve = [balance]
+# --- پارامترهای اصلی ---
+POSITION_DOLLAR = 100
+SL_PCT = 0.05   # حد ضرر ۵٪
+TP_PCT = 0.10   # حد سود ۱۰٪
+
+signals = []
+entry_prices = []
+position_sizes = []
+
 in_position = False
-entry_price = 0
+entry_price = 0.0
 position_size = 0
-pnl_list = []
+stop_price = 0.0
+tp_price = 0.0
 
-for i, row in df.iterrows():
-    signal = row['signal']
-    close = row['close']
+for i in range(1, len(df)):
+    curr = df.iloc[i]
+    price = curr['close']
 
-    if signal == "buy" and not in_position:
-        entry_price = row['entry_price']
-        position_size = row['position_size']
-        in_position = True
+    # --- ورود فقط بر اساس کندل صعودی ---
+    if not in_position:
+        if price > curr['open']:
+            entry_price = price
+            stop_price = entry_price * (1 - SL_PCT)
+            tp_price = entry_price * (1 + TP_PCT)
+            position_size = POSITION_DOLLAR / entry_price
 
-    elif signal == "sell" and in_position:
-        exit_price = close
-        pnl = (exit_price - entry_price) * position_size
-        balance += pnl
-        pnl_list.append(pnl)
-        equity_curve.append(balance)
-        in_position = False
-        entry_price = 0
-        position_size = 0
+            in_position = True
+            signals.append("buy")
+            entry_prices.append(entry_price)
+            position_sizes.append(round(position_size, 4))
+        else:
+            signals.append("hold")
+            entry_prices.append(0)
+            position_sizes.append(0)
 
-# آمار معاملات
-wins = [p for p in pnl_list if p > 0]
-losses = [p for p in pnl_list if p <= 0]
+    # --- خروج: یا به حد سود یا ضرر رسیده باشیم
+    else:
+        if price <= stop_price or price >= tp_price:
+            signals.append("sell")
+            in_position = False
+            entry_price = 0
+            position_size = 0
+            entry_prices.append(0)
+            position_sizes.append(0)
+        else:
+            signals.append("hold")
+            entry_prices.append(0)
+            position_sizes.append(0)
 
-print("📊 خلاصه عملکرد")
+# --- خروجی نهایی ---
+df = df.iloc[1:].copy()
+df['signal'] = signals
+df['entry_price'] = entry_prices
+df['position_size'] = position_sizes
+df.to_csv("btc_signals_15m.csv", index=False)
 
-print(f"\n📈 تعداد معاملات: {len(pnl_list)}")
-print(f"💵 سود خالص: {sum(pnl_list):.2f} $")
-print(f"✅ درصد برد: {(len(wins)/len(pnl_list)*100) if pnl_list else 0:.2f} %")
-print(f"📗 مجموع سودها: {sum(wins):.2f} $")
-print(f"📕 مجموع ضررها: {sum(losses):.2f} $")
-print(f"🟡 میانگین سود هر معامله: {(sum(pnl_list)/len(pnl_list)) if pnl_list else 0:.2f} $")
-
-# --- نمودار رشد سرمایه ---
-plt.figure(figsize=(12, 5))
-plt.plot(equity_curve, marker='o', linestyle='-', color='green', label='Equity Curve')
-plt.title("📈 نمودار رشد سرمایه", fontsize=14)
-plt.xlabel("تعداد معاملات بسته شده")
-plt.ylabel("موجودی حساب (USD)")
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
+print("✅ استراتژی ساده با ورود بر اساس کندل صعودی، SL=5٪ و TP=10٪ تولید شد.")
