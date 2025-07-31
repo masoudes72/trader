@@ -2,24 +2,27 @@ import ccxt
 import pandas as pd
 import time
 
-# پارامترها
+# --- پارامترها ---
 symbol = 'BTC/USDT'
-timeframe = '15m'
-limit = 10000
-exchange = ccxt.kucoin()
+exchange = ccxt.binance()
+limit = 1000
 
-# دریافت اطلاعات
-print("🚀 شروع دریافت اطلاعات از Kucoin...")
-print(f"📡 در حال درخواست {limit} کندل برای {symbol}...")
+# --- تابع دریافت دیتا ---
+def fetch_ohlcv(symbol, tf):
+    data = exchange.fetch_ohlcv(symbol, timeframe=tf, limit=limit)
+    df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+    return df
 
-data = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
+# --- دانلود داده تایم‌فریم 15m ---
+print("📥 دریافت داده 15 دقیقه‌ای...")
+df_15m = fetch_ohlcv(symbol, '15m')
+df_15m.to_csv("btc_15m_raw.csv", index=False)
+print("✅ ذخیره شد: btc_15m_raw.csv")
 
-# ساخت دیتافریم
-df = pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-
-# ذخیره با نام ثابت
-filename = "btc_15m_raw.csv"
-df.to_csv(filename, index=False)
-
-print(f"📁 ذخیره شد در فایل: {filename}")
+# --- دانلود داده تایم‌فریم 1h ---
+time.sleep(1)
+print("📥 دریافت داده 1 ساعته...")
+df_1h = fetch_ohlcv(symbol, '1h')
+df_1h.to_csv("btc_1h_raw.csv", index=False)
+print("✅ ذخیره شد: btc_1h_raw.csv")
