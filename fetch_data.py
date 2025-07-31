@@ -4,7 +4,7 @@ import time
 
 # --- پارامترها ---
 symbol = 'BTC/USDT'
-exchange = ccxt.binance()
+exchange = ccxt.KuCoin()
 limit = 1000
 
 # --- تابع دریافت دیتا ---
