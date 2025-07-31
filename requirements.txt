@@ -2,5 +2,4 @@ streamlit
 pandas
 matplotlib
 ccxt
-pandas_ta==0.3.14b0
-numpy>=1.24
+numpy
