@@ -5,7 +5,7 @@ import time
 # پارامترها
 symbol = 'BTC/USDT'
 timeframe = '15m'
-limit = 1000
+limit = 10000
 exchange = ccxt.kucoin()
 
 # دریافت اطلاعات
