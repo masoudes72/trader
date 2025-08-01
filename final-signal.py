@@ -1,28 +1,31 @@
 import pandas as pd
 import numpy as np
 
-# فرض می‌کنیم این فایل از قبل با اندیکاتورهای لازم ساخته شده است
+# این بخش برای تست است و شما باید فایل اصلی خود را جایگزین کنید
 # df = pd.read_csv("btc_15m_with_indicators.csv")
-# در اینجا یک دیتافریم نمونه برای تست می‌سازیم
 data = {
-    'timestamp': pd.to_datetime(pd.date_range('2023-01-01', periods=200, freq='15T')),
-    'open': np.random.uniform(20000, 21000, 200),
-    'high': np.random.uniform(20100, 21100, 200),
-    'low': np.random.uniform(19900, 20900, 200),
-    'close': np.random.uniform(20000, 21000, 200),
-    'ema_200_1h': np.random.uniform(19800, 20800, 200)
+    'timestamp': pd.to_datetime(pd.date_range('2023-01-01', periods=400, freq='15T')),
+    'open': np.random.uniform(20000, 21000, 400),
+    'high': np.random.uniform(20100, 21100, 400),
+    'low': np.random.uniform(19900, 20900, 400),
+    'close': np.random.uniform(20000, 21000, 400),
+    'ema_200_1h': pd.Series(np.random.uniform(19800, 20800, 400)).rolling(window=20).mean()
 }
 df = pd.DataFrame(data)
-# اطمینان از اینکه high بالاتر از بقیه و low پایین‌تر از بقیه است
 df['high'] = df[['open', 'high', 'close']].max(axis=1) + 10
 df['low'] = df[['open', 'low', 'close']].min(axis=1) - 10
+df.dropna(inplace=True)
+df.reset_index(drop=True, inplace=True)
 
 
 # ⚙️ پارامترها
 POSITION_DOLLAR = 100
 MIN_BOS_PCT = 0.005
-TP_PCT = 0.06 # حد سود کامل در 6%
-RR_RATIO = 2 # حداقل نسبت ریسک به ریوارد برای ورود
+TP_PCT = 0.06
+RR_RATIO = 1.5  # نسبت ریسک به ریوارد را کمی کاهش دادیم تا انعطاف بیشتر شود
+SWING_LOW_LOOKBACK = 10 # تعداد کندل برای یافتن کف قبلی
+FIB_OTE_MIN = 0.62 # سطح فیبوناچی برای شروع ناحیه OTE
+FIB_OTE_MAX = 0.79 # سطح فیبوناچی برای پایان ناحیه OTE
 
 # 📊 متغیرهای خروجی
 signals = []
@@ -37,27 +40,22 @@ waiting_for_pullback = False
 entry_price = 0.0
 stop_loss = 0.0
 take_profit = 0.0
-order_block = {'high': 0, 'low': 0}
+impulse_high = 0.0
+impulse_low = 0.0
+ote_zone = {'high': 0, 'low': 0}
 
-
-print("Running backtest...")
-# از اندیس 2 شروع می‌کنیم تا به کندل‌های قبلی دسترسی داشته باشیم
-for i in range(2, len(df)):
-    # کندل‌ها
+print("Running backtest v3 with Swing Low and OTE...")
+for i in range(SWING_LOW_LOOKBACK, len(df)):
     curr = df.iloc[i]
     prev = df.iloc[i-1]
-    prev_2 = df.iloc[i-2]
     price = curr['close']
 
     # --- مدیریت پوزیشن باز ---
     if in_position:
-        # بررسی حد ضرر
         if price <= stop_loss:
             signals.append("close_sl")
             exit_prices.append(stop_loss)
-            # بقیه لیست‌ها در پایان لوپ پر می‌شوند
             in_position = False
-        # بررسی حد سود
         elif price >= take_profit:
             signals.append("close_tp")
             exit_prices.append(take_profit)
@@ -65,14 +63,12 @@ for i in range(2, len(df)):
         else:
             signals.append("hold")
             exit_prices.append(0)
-
     # --- منطق ورود ---
     else:
-        # اگر منتظر پولبک هستیم
         if waiting_for_pullback:
-            # آیا قیمت به محدوده اردربلاک پولبک زده است؟
-            if curr['low'] <= order_block['high'] and curr['high'] >= order_block['low']:
-                entry_price = order_block['high'] # ورود در بالای اردربلاک
+            # آیا قیمت وارد ناحیه OTE شده است؟
+            if curr['low'] <= ote_zone['high'] and curr['high'] >= ote_zone['low']:
+                entry_price = ote_zone['high'] # ورود در بالای ناحیه OTE
                 
                 # محاسبه ریسک به ریوارد
                 risk = entry_price - stop_loss
@@ -84,43 +80,52 @@ for i in range(2, len(df)):
                     signals.append("buy")
                     exit_prices.append(0)
                     in_position = True
-                    waiting_for_pullback = False # دیگر منتظر نیستیم
+                    waiting_for_pullback = False
                 else:
-                    # اگر R/R مناسب نبود، سیگنال را نادیده بگیر
                     signals.append("hold")
                     exit_prices.append(0)
-                    waiting_for_pullback = False
+                    waiting_for_pullback = False # سیگنال نامعتبر شد
+            # اگر قیمت بدون پولبک زدن، سقف قبلی را هم بشکند، سیگنال نامعتبر است
+            elif curr['high'] > impulse_high:
+                 signals.append("hold")
+                 exit_prices.append(0)
+                 waiting_for_pullback = False
             else:
                 signals.append("hold")
                 exit_prices.append(0)
 
-        # اگر منتظر سیگنال جدید هستیم
         else:
-            # شرایط اولیه استراتژی
             is_uptrend = curr['close'] > curr['ema_200_1h']
             is_bos = curr['high'] > prev['high'] and (curr['high'] - prev['high']) / prev['high'] >= MIN_BOS_PCT
 
             if is_uptrend and is_bos:
-                # اردربلاک: آخرین کندل نزولی قبل از حرکت صعودی که باعث BOS شده
-                # این یک تعریف ساده شده است، prev_2 باید نزولی باشد
-                if prev_2['close'] < prev_2['open']:
-                    order_block['high'] = prev_2['high']
-                    order_block['low'] = prev_2['low']
-                    
-                    # حد ضرر: زیر کفی که قبل از شکست ساختار ایجاد شده (Low کندل اردربلاک)
-                    stop_loss = order_block['low']
-                    
-                    waiting_for_pullback = True
-                    signals.append("wait_pullback") # وضعیت جدید: منتظر پولبک
-                    exit_prices.append(0)
-                else:
-                    signals.append("hold")
-                    exit_prices.append(0)
+                # یافتن Swing Low در 10 کندل گذشته
+                swing_low_candle_range = df.iloc[i - SWING_LOW_LOOKBACK : i]
+                impulse_low_price = swing_low_candle_range['low'].min()
+                
+                # یافتن شروع حرکت ایمپالس (کندلی که Swing Low را ثبت کرده)
+                impulse_start_index = swing_low_candle_range['low'].idxmin()
+
+                # حرکت ایمپالس از Swing Low تا کندلی است که BOS را ساخته
+                impulse_high_price = curr['high']
+                
+                # محاسبه ناحیه OTE با فیبوناچی
+                impulse_range = impulse_high_price - impulse_low_price
+                ote_zone['high'] = impulse_high_price - (impulse_range * FIB_OTE_MIN)
+                ote_zone['low'] = impulse_high_price - (impulse_range * FIB_OTE_MAX)
+
+                # تنظیم پارامترها برای انتظار
+                stop_loss = impulse_low_price
+                impulse_high = impulse_high_price
+                
+                waiting_for_pullback = True
+                signals.append("wait_pullback")
+                exit_prices.append(0)
             else:
                 signals.append("hold")
                 exit_prices.append(0)
 
-    # آپدیت لیست‌ها در هر تکرار
+    # آپدیت لیست‌ها
     if in_position or signals[-1] == "buy":
         entry_prices.append(entry_price)
         stop_losses.append(stop_loss)
@@ -131,17 +136,14 @@ for i in range(2, len(df)):
         take_profits.append(0)
 
 # ذخیره خروجی
-# چون ممکن است طول لیست سیگنال‌ها با دیتافریم اصلی متفاوت باشد، باید آن را هماهنگ کنیم
-final_df = df.iloc[2:].copy()
+final_df = df.iloc[SWING_LOW_LOOKBACK:].copy()
 final_df['signal'] = signals
 final_df['entry_price'] = entry_prices
 final_df['exit_price'] = exit_prices
 final_df['stop_loss'] = stop_losses
 final_df['take_profit'] = take_profits
-
-# محاسبه حجم پوزیشن (می‌تواند پویا شود)
 final_df['position_size_usd'] = np.where(final_df['signal'] == 'buy', POSITION_DOLLAR, 0)
 
-final_df.to_csv("signals_v2_with_sl_ob.csv", index=False)
+final_df.to_csv("signals_v3_with_ote.csv", index=False)
 
-print("✅ نسخه جدید 'signals_v2_with_sl_ob.csv' با منطق حد ضرر و اردربلاک ذخیره شد.")
+print("✅ نسخه جدید 'signals_v3_with_ote.csv' با منطق Swing Low و OTE ذخیره شد.")
