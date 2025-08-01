@@ -1,10 +1,8 @@
-# محتوای کامل برای فایل fetch_data.py
+# محتوای کامل برای فایل fetch_data.py (بدون نیاز به pandas-ta)
 
 import ccxt
 import pandas as pd
-import pandas_ta as ta
 
-# این تابع بدون تغییر باقی می‌ماند
 def get_exchange():
     return ccxt.binance({
         'rateLimit': 1200,
@@ -14,11 +12,9 @@ def get_exchange():
         }
     })
 
-# این تابع به طور کامل بازنویسی و اصلاح شده است
 def fetch_data(symbol='BTC/USDT', timeframe='15m', limit=1000):
     """
-    داده‌های قیمت را دریافت کرده و اندیکاتورهای لازم را محاسبه می‌کند.
-    منطق محاسبه EMA یک ساعته به طور کامل اصلاح شده است.
+    داده‌های قیمت را دریافت کرده و اندیکاتورهای لازم را به صورت دستی محاسبه می‌کند.
     """
     print(f"Fetching {limit} candles for {symbol} on {timeframe} timeframe...")
     exchange = get_exchange()
@@ -27,42 +23,35 @@ def fetch_data(symbol='BTC/USDT', timeframe='15m', limit=1000):
         bars = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
         df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         
-        # تبدیل timestamp به فرمت تاریخ خوانا
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 
-        # اطمینان از اینکه نوع داده‌ها عددی است
         for col in ['open', 'high', 'low', 'close', 'volume']:
             df[col] = pd.to_numeric(df[col])
 
-        print("Data fetched successfully. Calculating indicators...")
+        print("Data fetched successfully. Calculating indicators manually...")
 
-        # --- روش جدید و اصلاح شده برای محاسبه و ادغام EMA یک ساعته ---
+        # --- روش محاسبه دستی EMA با استفاده از خود Pandas ---
 
-        # 1. یک کپی از دیتافریم برای محاسبات ۱ ساعته ایجاد می‌کنیم
+        # 1. کپی و تبدیل داده به تایم‌فریم ۱ ساعته
         df_1h = df.set_index('timestamp').copy()
-
-        # 2. داده‌ها را به تایم‌فریم ۱ ساعته Resample می‌کنیم
         df_1h = df_1h['close'].resample('1H').last().to_frame()
         
-        # 3. EMA 200 را روی داده‌های ۱ ساعته محاسبه می‌کنیم
-        # (به دلیل نیاز به 200 کندل، ممکن است در ابتدا مقادیر NaN داشته باشیم)
-        df_1h['ema_200_1h'] = ta.ema(df_1h['close'], length=200)
+        # 2. محاسبه دستی EMA 200 با تابع .ewm() خود pandas
+        df_1h['ema_200_1h'] = df_1h['close'].ewm(span=200, adjust=False).mean()
 
-        # 4. مقادیر EMA محاسبه شده را به فرکانس ۱۵ دقیقه Resample می‌کنیم.
-        #    این کار به طور خودکار مقادیر را برای کندل‌های میانی پر می‌کند (forward-fill)
+        # 3. Resample کردن EMA یک ساعته به فرکانس ۱۵ دقیقه
         df_1h_resampled = df_1h['ema_200_1h'].resample('15T').ffill()
 
-        # 5. دیتافریم اصلی را با دیتافریم resample شده ادغام (join) می‌کنیم
-        #    join بر اساس ایندکس (timestamp) کار می‌کند و بسیار امن‌تر از merge است
+        # 4. ادغام با دیتافریم اصلی
         df_final = df.set_index('timestamp').join(df_1h_resampled)
 
-        # 6. سطرهایی که در ابتدای بازه زمانی به دلیل نبود داده کافی برای EMA، مقدار NaN دارند را حذف می‌کنیم
+        # 5. حذف سطرهای خالی اولیه
         df_final.dropna(inplace=True)
         df_final.reset_index(inplace=True)
 
         print("Indicators calculated and merged successfully.")
         print("Final DataFrame preview:")
-        print(df_final.tail()) # یک پیش‌نمایش از ۵ سطر آخر داده نهایی چاپ می‌کنیم تا از وجود مقادیر مطمئن شویم
+        print(df_final.tail())
 
         return df_final
 
