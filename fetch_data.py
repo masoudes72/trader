@@ -12,7 +12,7 @@ def get_exchange():
         }
     })
 
-def fetch_data(symbol='BTC/USDT', timeframe='15m', limit=1000):
+def fetch_data(symbol='BTC/USDT', timeframe='5m', limit=2000):
     """
     داده‌های قیمت را دریافت کرده و اندیکاتورهای لازم را به صورت دستی محاسبه می‌کند.
     """
@@ -58,3 +58,4 @@ def fetch_data(symbol='BTC/USDT', timeframe='15m', limit=1000):
     except Exception as e:
         print(f"An error occurred in fetch_data: {e}")
         return pd.DataFrame()
+
